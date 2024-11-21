@@ -335,17 +335,17 @@ pub unsafe trait DataType: Debug + Clone {
 macro_rules! data_type {
     ($name:ident) => {
         paste::paste! {
-            $crate::data_type!($name, [<UA_ $name>], [<UA_TYPES_ $name:upper>]);
+            $crate::data_type!($name, [<UA_ $name>], UA_TYPES, [<UA_TYPES_ $name:upper>]);
         }
     };
 
     ($name:ident, $inner:ident) => {
         paste::paste! {
-            $crate::data_type!($name, [<UA_ $name>], [<UA_TYPES_ $inner:upper>]);
+            $crate::data_type!($name, [<UA_ $name>], UA_TYPES, [<UA_TYPES_ $inner:upper>]);
         }
     };
-
-    ($name:ident, $inner:ident, $index:ident) => {
+    
+    ($name:ident, $inner:ident, $types_array:ident, $index:ident) => {
         /// Wrapper for
         #[doc = concat!("[`", stringify!($inner), "`](open62541_sys::", stringify!($inner), ")")]
         /// from [`open62541_sys`].
@@ -366,15 +366,10 @@ macro_rules! data_type {
         // allocated.
         unsafe impl Send for $name {}
 
-        // SAFETY: References to [`DataType`] may be sent across thread. The inner types would not
-        // allow this (because pointers are used to pass ownership) but we must unwrap our wrapper
-        // types in this case which is only implemented for owned values.
         unsafe impl Sync for $name {}
 
         impl Drop for $name {
             fn drop(&mut self) {
-                // `UA_clear()` resets the data structure, freeing any dynamically allocated memory
-                // in it, no matter how deeply nested.
                 unsafe {
                     open62541_sys::UA_clear(
                         std::ptr::addr_of_mut!(self.0).cast::<std::ffi::c_void>(),
@@ -384,17 +379,13 @@ macro_rules! data_type {
             }
         }
 
-        // SAFETY: We can transmute between our wrapper type and the inner type. This is ensured by
-        // using `#[repr(transparent)]` on the type definition.
         unsafe impl $crate::DataType for $name {
             type Inner = open62541_sys::$inner;
 
             fn data_type() -> *const open62541_sys::UA_DataType {
-                // PANIC: Value must fit into `usize` to allow indexing.
+                // Use the specified types array and index
                 let index = usize::try_from(open62541_sys::$index).unwrap();
-                // SAFETY: We use this static variable only read-only.
-                // PANIC: The given index is valid within `UA_TYPES`.
-                unsafe { open62541_sys::UA_TYPES.get(index) }.unwrap()
+                unsafe { open62541_sys::$types_array.get(index) }.unwrap()
             }
 
             #[must_use]
@@ -404,10 +395,7 @@ macro_rules! data_type {
 
             #[must_use]
             fn into_raw(self) -> Self::Inner {
-                // SAFETY: Move value out of `self` despite it not being `Copy`. We consume `self`
-                // and forget it below, so that `Drop` is not called on the original value.
                 let inner = unsafe { std::ptr::read(std::ptr::addr_of!(self.0)) };
-                // Make sure that `drop()` is not called anymore.
                 std::mem::forget(self);
                 inner
             }

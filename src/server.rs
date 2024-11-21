@@ -503,6 +503,13 @@ impl Server {
         Ok(out_new_node_id)
     }
 
+    pub fn get_config(&self) -> *mut UA_ServerConfig {
+        unsafe { UA_Server_getConfig(self.0.as_ptr().cast_mut()) }
+    }
+
+    pub fn get_server_as_mut_ptr(&self) -> *mut UA_Server {
+        unsafe { self.0.as_ptr().cast_mut() }
+    }
     /// Adds variable node to address space.
     ///
     /// This returns the node ID that was actually inserted (when no explicit requested new node ID

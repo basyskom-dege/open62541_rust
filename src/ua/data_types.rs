@@ -54,6 +54,7 @@ mod variant;
 mod write_request;
 mod write_response;
 mod write_value;
+mod rfid_scan_results;
 
 pub use self::{
     anonymous_identity_token::AnonymousIdentityToken,
@@ -114,6 +115,7 @@ pub use self::{
     write_request::WriteRequest,
     write_response::WriteResponse,
     write_value::WriteValue,
+    rfid_scan_results::RfidScanResult,
 };
 
 macro_rules! primitive {

@@ -9,7 +9,7 @@ use crate::{
 ///
 /// Nodes created by [`Server`](crate::Server) need to keep track of dynamic data structures. These
 /// are cleaned up when the corresponding node is destroyed by the server.
-pub(crate) enum NodeContext {
+pub enum NodeContext {
     DataSource(Box<dyn DataSource>),
     MethodCallback(Box<dyn MethodCallback>),
 }
@@ -22,8 +22,12 @@ impl NodeContext {
     /// returned pointer exactly once.
     ///
     /// [`consume()`]: Self::consume
-    pub(crate) fn leak(self) -> *mut c_void {
+    pub fn leak(self) -> *mut c_void {
         Userdata::<Self>::prepare(self)
+    }
+
+    pub fn into_boxed(self) -> Box<Self> {
+        Box::new(self)
     }
 
     /// Unwraps [`c_void`] pointer to access node context.

@@ -1,4 +1,4 @@
-use std::{fmt, mem::MaybeUninit, ptr};
+use std::{fmt, mem::MaybeUninit};
 
 use open62541_sys::{UA_ServerConfig, UA_ServerConfig_clean, UA_ServerConfig_setMinimal};
 

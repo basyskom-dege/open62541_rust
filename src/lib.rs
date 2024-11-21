@@ -211,7 +211,7 @@
 mod client;
 mod data_type;
 mod error;
-mod server;
+pub mod server;
 mod service;
 pub mod ua;
 

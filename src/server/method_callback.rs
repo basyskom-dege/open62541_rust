@@ -156,7 +156,7 @@ impl MethodCallbackContext {
 /// The returned [`UA_MethodCallback`] is only valid for as long as [`NodeContext`] is alive. The
 /// lifetime can be extended by using [`NodeContext::leak()`] to save this value inside the
 /// corresponding server node, to be eventually cleaned up when the node is destroyed.
-pub(crate) unsafe fn wrap_method_callback(
+pub unsafe fn wrap_method_callback(
     method_callback: impl MethodCallback + 'static,
 ) -> (UA_MethodCallback, NodeContext) {
     unsafe extern "C" fn callback_c(
@@ -172,7 +172,18 @@ pub(crate) unsafe fn wrap_method_callback(
         output_size: usize,
         output: *mut UA_Variant,
     ) -> UA_StatusCode {
+        // Check if `method_context` is null
+        if method_context.is_null() {
+            // Handle the null case by returning an error
+            println!("method_context is null");
+            return ua::StatusCode::BADINTERNALERROR.into_raw();
+        }
+
+        println!("method_context is not null");
+        println!("method_context: {:?}", method_context);
+        // `method_context` is non-null, so it's safe to call `peek_at`
         let node_context = unsafe { NodeContext::peek_at(method_context) };
+        
         #[allow(irrefutable_let_patterns)] // We will add more node context types eventually.
         let NodeContext::MethodCallback(method_callback) = node_context
         else {
