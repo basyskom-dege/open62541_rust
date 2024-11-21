@@ -365,11 +365,15 @@ macro_rules! data_type {
         // shared) and the allocations need not be deallocated in the same thread where they were
         // allocated.
         unsafe impl Send for $name {}
-
+        // SAFETY: References to [`DataType`] may be sent across thread. The inner types would not
+        // allow this (because pointers are used to pass ownership) but we must unwrap our wrapper
+        // types in this case which is only implemented for owned values.
         unsafe impl Sync for $name {}
 
         impl Drop for $name {
             fn drop(&mut self) {
+                // `UA_clear()` resets the data structure, freeing any dynamically allocated memory
+                // in it, no matter how deeply nested.
                 unsafe {
                     open62541_sys::UA_clear(
                         std::ptr::addr_of_mut!(self.0).cast::<std::ffi::c_void>(),
@@ -378,13 +382,16 @@ macro_rules! data_type {
                 }
             }
         }
-
+        // SAFETY: We can transmute between our wrapper type and the inner type. This is ensured by
+        // using `#[repr(transparent)]` on the type definition.
         unsafe impl $crate::DataType for $name {
             type Inner = open62541_sys::$inner;
 
             fn data_type() -> *const open62541_sys::UA_DataType {
-                // Use the specified types array and index
+                // PANIC: Value must fit into `usize` to allow indexing.
                 let index = usize::try_from(open62541_sys::$index).unwrap();
+                // SAFETY: We use this static variable only read-only.
+                // PANIC: The given index is valid within `UA_TYPES`.
                 unsafe { open62541_sys::$types_array.get(index) }.unwrap()
             }
 
@@ -395,7 +402,10 @@ macro_rules! data_type {
 
             #[must_use]
             fn into_raw(self) -> Self::Inner {
+                // SAFETY: Move value out of `self` despite it not being `Copy`. We consume `self`
+                // and forget it below, so that `Drop` is not called on the original value.
                 let inner = unsafe { std::ptr::read(std::ptr::addr_of!(self.0)) };
+                // Make sure that `drop()` is not called anymore.
                 std::mem::forget(self);
                 inner
             }
